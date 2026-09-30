@@ -25,7 +25,7 @@ elements create dealwren -scaffold=elementscode/demo-dealwren
 
 ## Demo accounts
 
-The seed creates one owner and two reps, five companies, ten contacts, eight
+The seed creates one owner and two reps, five companies, ten contacts, fifteen
 deals across every stage with a timeline of notes, calls, emails and stage
 changes, and a set of follow-up tasks, some due today. The sign-in page lists
 the accounts in development.

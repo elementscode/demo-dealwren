@@ -1,4 +1,4 @@
--- demo team: one owner, two reps, five companies, ten contacts, eight deals (dev only)
+-- demo team: one owner, two reps, five companies, ten contacts, fifteen deals (dev only)
 /** @env development */
 
 insert into users (email, name, role, passwordHash) values
@@ -32,7 +32,7 @@ join users u on u.email = c.owner;
 
 insert into deals (name, companyId, value, stage, closeOn, ownerId, wonAt)
 select d.name, co.id, d.value, d.stage::dealStage, current_date + d.days, u.id,
-  case when d.stage = 'won' then now() - interval '2 hours' end
+  case when d.stage = 'won' then now() - case when d.days < 0 then interval '6 days' else interval '2 hours' end end
 from (values
   ('Northwind fleet tracking', 'Northwind Supply', 48000, 'negotiation', 12, 'sam@dealwren.test'),
   ('Northwind warehouse pilot', 'Northwind Supply', 12000, 'lead', 60, 'sam@dealwren.test'),
@@ -41,7 +41,14 @@ from (values
   ('Kestrel line monitoring', 'Kestrel Robotics', 72000, 'proposal', 28, 'jordan@dealwren.test'),
   ('Kestrel spare parts portal', 'Kestrel Robotics', 9500, 'lead', 75, 'maya@dealwren.test'),
   ('Oakline patient intake', 'Oakline Health', 54000, 'won', 0, 'sam@dealwren.test'),
-  ('Harbor & Pine loyalty', 'Harbor & Pine', 22000, 'lost', -5, 'jordan@dealwren.test')
+  ('Harbor & Pine loyalty', 'Harbor & Pine', 22000, 'lost', -5, 'jordan@dealwren.test'),
+  ('Bluefin analyst seats', 'Bluefin Analytics', 14000, 'lead', 50, 'jordan@dealwren.test'),
+  ('Oakline clinic scheduling', 'Oakline Health', 27500, 'qualified', 40, 'sam@dealwren.test'),
+  ('Harbor & Pine spa bookings', 'Harbor & Pine', 8200, 'lead', 70, 'maya@dealwren.test'),
+  ('Kestrel QA dashboards', 'Kestrel Robotics', 31000, 'negotiation', 9, 'jordan@dealwren.test'),
+  ('Northwind driver app', 'Northwind Supply', 16500, 'qualified', 45, 'jordan@dealwren.test'),
+  ('Oakline telehealth', 'Oakline Health', 19000, 'won', -6, 'maya@dealwren.test'),
+  ('Bluefin onboarding package', 'Bluefin Analytics', 24000, 'qualified', 18, 'sam@dealwren.test')
 ) as d (name, company, value, stage, days, owner)
 join companies co on co.name = d.company
 join users u on u.email = d.owner;
@@ -79,7 +86,24 @@ from (values
   ('Oakline patient intake', 'sam@dealwren.test', 'stage', '', 'negotiation', 'won', '2 hours'),
   ('Harbor & Pine loyalty', 'jordan@dealwren.test', 'call', 'Ravi wants points that work across all three properties.', null, null, '21 days 4 hours'),
   ('Harbor & Pine loyalty', 'jordan@dealwren.test', 'stage', '', 'proposal', 'lost', '5 days 3 hours'),
-  ('Harbor & Pine loyalty', 'jordan@dealwren.test', 'note', 'Went with an in-house build. Revisit next year.', null, null, '5 days 2 hours')
+  ('Harbor & Pine loyalty', 'jordan@dealwren.test', 'note', 'Went with an in-house build. Revisit next year.', null, null, '5 days 2 hours'),
+  ('Bluefin analyst seats', 'jordan@dealwren.test', 'email', 'Marcus asked about adding seats for the new analytics hires in Q1.', null, null, '3 days 4 hours'),
+  ('Bluefin analyst seats', 'jordan@dealwren.test', 'note', 'Wait for the platform deal to close, then quote seats as an add-on.', null, null, '2 days 1 hour'),
+  ('Oakline clinic scheduling', 'sam@dealwren.test', 'call', 'Diego wants the intake rollout followed by online booking at both clinics.', null, null, '9 days 3 hours'),
+  ('Oakline clinic scheduling', 'sam@dealwren.test', 'stage', '', 'lead', 'qualified', '8 days 5 hours'),
+  ('Oakline clinic scheduling', 'sam@dealwren.test', 'email', 'Sent Hannah the scheduling one-pager and a demo link.', null, null, '1 day 6 hours'),
+  ('Harbor & Pine spa bookings', 'maya@dealwren.test', 'note', 'Ravi says the spa at the new property opens in spring. Worth a small add-on to the guest app.', null, null, '4 days 3 hours'),
+  ('Kestrel QA dashboards', 'jordan@dealwren.test', 'call', 'Wei''s quality team wants defect rates per line on one screen.', null, null, '19 days 2 hours'),
+  ('Kestrel QA dashboards', 'jordan@dealwren.test', 'stage', '', 'qualified', 'proposal', '12 days 4 hours'),
+  ('Kestrel QA dashboards', 'jordan@dealwren.test', 'stage', '', 'proposal', 'negotiation', '2 days 5 hours'),
+  ('Kestrel QA dashboards', 'jordan@dealwren.test', 'note', 'Grace asked for quarterly billing. Fine by us.', null, null, '1 day 3 hours'),
+  ('Northwind driver app', 'jordan@dealwren.test', 'call', 'Priya''s drivers still log deliveries on paper. She wants a pilot with ten drivers.', null, null, '7 days 5 hours'),
+  ('Northwind driver app', 'jordan@dealwren.test', 'stage', '', 'lead', 'qualified', '6 days 2 hours'),
+  ('Oakline telehealth', 'maya@dealwren.test', 'call', 'Hannah wants video visits added before flu season.', null, null, '15 days 4 hours'),
+  ('Oakline telehealth', 'maya@dealwren.test', 'stage', '', 'proposal', 'negotiation', '10 days 3 hours'),
+  ('Oakline telehealth', 'maya@dealwren.test', 'stage', '', 'negotiation', 'won', '6 days 2 hours'),
+  ('Bluefin onboarding package', 'sam@dealwren.test', 'email', 'Lena asked for training for her analysts once the platform is live.', null, null, '5 days 5 hours'),
+  ('Bluefin onboarding package', 'sam@dealwren.test', 'stage', '', 'lead', 'qualified', '4 days 3 hours')
 ) as a (deal, author, kind, body, fromStage, toStage, ago)
 join deals dl on dl.name = a.deal
 join users u on u.email = a.author;
