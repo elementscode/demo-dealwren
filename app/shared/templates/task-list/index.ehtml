@@ -1,0 +1,113 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Me } from "#app/shared/services/auth";
+import { Task } from "#app/shared/services/tasks";
+import { Member } from "#app/shared/services/team";
+import { relativeDay, today } from "#app/shared/services/format";
+
+export interface TaskTarget {
+  contactId: string | null;
+  contactName: string | null;
+  dealId: string | null;
+  dealName: string | null;
+}
+
+interface TaskForm {
+  title: string;
+  dueOn: string;
+  ownerId: string;
+  error: string;
+}
+
+export function dueClass(task: Task): string {
+  if (task.done) {
+    return "";
+  }
+
+  let t = today();
+
+  return task.dueOn < t ? "is-late" : task.dueOn === t ? "is-today" : "";
+}
+
+export function byDue(a: Task, b: Task): number {
+  return Number(a.done) - Number(b.done) || a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title);
+}
+
+function onAdd(form: TaskForm, tasks: LiveView<Task>, target: TaskTarget, members: Member[]) {
+  if (!form.title.trim()) {
+    form.error = "Describe the follow-up.";
+    return;
+  }
+
+  try {
+    tasks.insert(
+      {
+        title: form.title.trim(),
+        dueOn: form.dueOn,
+        done: false,
+        ownerId: form.ownerId,
+        ownerName: members.find((m) => m.id === form.ownerId)?.name ?? null,
+        contactId: target.contactId,
+        contactName: target.contactName,
+        dealId: target.dealId,
+        dealName: target.dealName,
+        createdAt: new Date(),
+      },
+      () => {
+        form.title = "";
+        form.error = "";
+      },
+    );
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function onToggle(tasks: LiveView<Task>, task: Task) {
+  tasks.update({ ...task, done: !task.done });
+}
+
+<TaskList (
+  tasks: LiveView<Task>,
+  me: Me,
+  members: Member[],
+  target: TaskTarget | null = null,
+  showTarget: boolean = false,
+  only: (t: Task) => boolean = () => true,
+  empty: string = "No follow-ups yet.",
+  private form: TaskForm = { title: "", dueOn: today(), ownerId: me.id, error: "" },
+)>
+  <div class="stack">
+    <ul e:if={tasks.filter(only).length > 0} class="task-list stack">
+      <li e:for={task of tasks.filter(only).sort(byDue)} class={["task-row", task.done && "is-done"]}>
+        <input type="checkbox" checked={task.done} aria-label="Done" onchange={() => onToggle(tasks, task)}>
+        <div class="task-body">
+          <span class="task-title">{task.title}</span>
+          <span class="task-meta">
+            <span class={["task-due", dueClass(task)]}>{relativeDay(task.dueOn)}</span>
+            <span>{task.ownerName ?? "Unassigned"}</span>
+            <a e:if={showTarget && task.dealId} href={"/deals/" + task.dealId}>{task.dealName}</a>
+            <a e:if={showTarget && task.contactId} href={"/contacts/" + task.contactId}>{task.contactName}</a>
+          </span>
+        </div>
+        <button e:if={me.role === "owner"} class="is-ghost is-sm task-remove" title="Delete task" aria-label="Delete task" onclick={() => tasks.delete(task)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </li>
+    </ul>
+
+    <p e:else class="empty-note">{empty}</p>
+
+    <form e:if={target} class="task-add" onsubmit={() => onAdd(form, tasks, target!, members)}>
+      <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+      <div class="task-add-row">
+        <input class="task-add-title" value={form.title} placeholder="Add a follow-up…" aria-label="Follow-up">
+        <button type="submit">Add</button>
+        <input type="date" value={form.dueOn} aria-label="Due date" required>
+        <select class="task-add-owner" value={form.ownerId} aria-label="Assigned to">
+          <option e:for={m of members} value={m.id}>{m.name}</option>
+        </select>
+      </div>
+    </form>
+  </div>
+</TaskList>

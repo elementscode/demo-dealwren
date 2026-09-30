@@ -1,0 +1,115 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import { signin } from "#app/shared/services/auth";
+import { initials } from "#app/shared/services/format";
+import { Mark } from "#app/shared/templates/mark";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export interface DemoLogin {
+  name: string;
+  role: "owner" | "rep";
+  email: string;
+  password: string;
+}
+
+interface SigninForm {
+  email: string;
+  password: string;
+  error: string;
+  busy: boolean;
+}
+
+function onSubmit(form: SigninForm) {
+  form.busy = true;
+
+  try {
+    signin(form.email, form.password);
+    form.error = "";
+    redirect("/");
+  } catch (err: any) {
+    form.error = err.message;
+    form.busy = false;
+  }
+}
+
+function onUseLogin(form: SigninForm, login: DemoLogin) {
+  form.email = login.email;
+  form.password = login.password;
+  onSubmit(form);
+}
+
+<html lang="en" class="page-signin" (
+  demo: DemoLogin[],
+  private form: SigninForm = { email: "", password: "", error: "", busy: false },
+)>
+  <head>
+    <title>Sign in · dealwren</title>
+    <meta name="description" content="Sign in to your team's dealwren.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <main class="signin-main center">
+      <div class="signin-panel stack is-lg">
+        <div class="signin-brand row">
+          <Mark />
+          dealwren
+        </div>
+
+        <div class="card signin-card">
+          <div class="card-body">
+            <form class="stack" onsubmit={() => onSubmit(form)}>
+              <h1 class="signin-title">Sign in</h1>
+
+              <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email"
+                       name="email"
+                       type="email"
+                       value={form.email}
+                       autocomplete="email"
+                       autocapitalize="none"
+                       spellcheck={false}
+                       placeholder="you@company.com"
+                       required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password"
+                       name="password"
+                       type="password"
+                       value={form.password}
+                       autocomplete="current-password"
+                       required>
+              </div>
+
+              <button type="submit" class={["is-primary is-block", form.busy && "is-loading"]} disabled={form.busy}>
+                Sign in
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <section e:if={demo.length > 0} class="signin-demo stack">
+          <h2 class="signin-demo-title">Demo logins</h2>
+
+          <div class="signin-demo-list stack">
+            <button e:for={login of demo}
+                    type="button"
+                    class="signin-login"
+                    onclick={() => onUseLogin(form, login)}>
+              <span class="avatar">{initials(login.name)}</span>
+              <span class="signin-login-who">
+                <span class="signin-login-name">{login.name}</span>
+                <span class="signin-login-cred">{login.email} · {login.password}</span>
+              </span>
+              <span class={["pill", login.role === "owner" && "is-accent"]}>{login.role}</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

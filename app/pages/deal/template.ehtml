@@ -1,0 +1,313 @@
+import "./style.css";
+import { LiveView, redirect } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { TaskList } from "#app/shared/templates/task-list";
+import { Me } from "#app/shared/services/auth";
+import { Deal, Activity, ActivityKind } from "#app/shared/services/deals";
+import { Task } from "#app/shared/services/tasks";
+import { CompanyOption } from "#app/shared/services/companies";
+import { Member } from "#app/shared/services/team";
+import { Stage, STAGES, STAGE_LABELS, formatMoney, formatDay, formatWhen, initials, stageLine } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export interface DealEdit {
+  name: string;
+  value: number;
+  companyId: string;
+  closeOn: string;
+  ownerId: string;
+  saved: boolean;
+  error: string;
+}
+
+interface Composer {
+  kind: ActivityKind;
+  body: string;
+  error: string;
+}
+
+export function editFor(deal: Deal): DealEdit {
+  return {
+    name: deal.name,
+    value: deal.value,
+    companyId: deal.companyId ?? "",
+    closeOn: deal.closeOn ?? "",
+    ownerId: deal.ownerId ?? "",
+    saved: false,
+    error: "",
+  };
+}
+
+const KIND_VERBS: Record<ActivityKind, string> = {
+  note: "added a note",
+  call: "logged a call",
+  email: "logged an email",
+  stage: "",
+};
+
+function newestFirst(a: Activity, b: Activity): number {
+  return +new Date(b.createdAt) - +new Date(a.createdAt);
+}
+
+function reached(deal: Deal, stage: Stage): boolean {
+  if (deal.stage === "lost") {
+    return stage === "lost";
+  }
+
+  return STAGES.indexOf(stage) <= STAGES.indexOf(deal.stage) && stage !== "lost";
+}
+
+/** The select's binding may already have written the new stage onto the row, so always send it. */
+function onStageChange(e: Event, deals: LiveView<Deal>, deal: Deal) {
+  deals.update({ ...deal, stage: (e.target as HTMLSelectElement).value as Stage });
+}
+
+function onLog(composer: Composer, activities: LiveView<Activity>, deal: Deal, me: Me) {
+  if (!composer.body.trim()) {
+    composer.error = "Write something to log.";
+    return;
+  }
+
+  try {
+    activities.insert(
+      {
+        kind: composer.kind,
+        body: composer.body.trim(),
+        userId: me.id,
+        authorName: me.name,
+        dealName: deal.name,
+        fromStage: null,
+        toStage: null,
+        createdAt: new Date(),
+      },
+      () => {
+        composer.body = "";
+        composer.error = "";
+      },
+    );
+  } catch (err: any) {
+    composer.error = err.message;
+  }
+}
+
+function onSave(edit: DealEdit, deals: LiveView<Deal>, deal: Deal, companies: CompanyOption[], members: Member[]) {
+  try {
+    deals.update({
+      ...deal,
+      name: edit.name.trim(),
+      value: Number(edit.value) || 0,
+      companyId: edit.companyId || null,
+      closeOn: edit.closeOn || null,
+      ownerId: edit.ownerId || null,
+      companyName: companies.find((c) => c.id === edit.companyId)?.name ?? null,
+      ownerName: members.find((m) => m.id === edit.ownerId)?.name ?? null,
+    });
+    edit.error = "";
+    edit.saved = true;
+  } catch (err: any) {
+    edit.error = err.message;
+    edit.saved = false;
+  }
+}
+
+function onDelete(deals: LiveView<Deal>, deal: Deal) {
+  if (!confirm(`Delete "${deal.name}" and its timeline? This cannot be undone.`)) {
+    return;
+  }
+
+  deals.delete(deal);
+  redirect("/pipeline");
+}
+
+<html lang="en" class="page-deal" (
+  me: Me,
+  dealId: string,
+  deals: LiveView<Deal>,
+  activities: LiveView<Activity>,
+  tasks: LiveView<Task>,
+  companies: CompanyOption[],
+  members: Member[],
+  edit: DealEdit,
+  private composer: Composer = { kind: "note", body: "", error: "" } as Composer,
+)>
+  <head>
+    <title>{deals.get(dealId)?.name ?? "Deal"} · dealwren</title>
+    <meta name="description" content="Deal timeline and follow-ups.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="pipeline">
+      <nav class="deal-crumb row">
+        <a href="/pipeline">Pipeline</a>
+        <span>/</span>
+        <span>Deal</span>
+      </nav>
+
+      <div e:if={!deals.get(dealId)} class="deal-gone stack">
+        <h1>This deal was deleted</h1>
+        <p class="muted">It is no longer in the pipeline.</p>
+        <p><a class="button" href="/pipeline">Back to the pipeline</a></p>
+      </div>
+
+      <DealView e:else
+                {me}
+                deal={deals.get(dealId)!}
+                {deals}
+                {activities}
+                {tasks}
+                {companies}
+                {members}
+                {edit}
+                {composer} />
+    </Layout>
+  </body>
+</html>
+
+<DealView (
+  me: Me,
+  deal: Deal,
+  deals: LiveView<Deal>,
+  activities: LiveView<Activity>,
+  tasks: LiveView<Task>,
+  companies: CompanyOption[],
+  members: Member[],
+  edit: DealEdit,
+  composer: Composer,
+)>
+  <header class={["stack is-md", "stage-" + deal.stage]}>
+    <div class="deal-head">
+      <div>
+        <h1>{deal.name}</h1>
+        <div class="deal-sub cluster">
+          <span class="deal-value money">{formatMoney(deal.value)}</span>
+          <a e:if={deal.companyId} href={"/companies/" + deal.companyId}>{deal.companyName}</a>
+          <span e:if={deal.closeOn}>Closes {formatDay(deal.closeOn)}</span>
+          <span class="row" style={{ gap: "0.4rem" }}>
+            <span class="avatar is-sm">{initials(deal.ownerName)}</span>
+            {deal.ownerName ?? "Unassigned"}
+          </span>
+        </div>
+      </div>
+
+      <label class="deal-stage-pick row">
+        <span class="stage-tag"><span class="stage-dot"></span>Stage</span>
+        <select aria-label="Stage" value={deal.stage} onchange={(e) => onStageChange(e, deals, deal)}>
+          <option e:for={s of STAGES} value={s}>{STAGE_LABELS[s]}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="stages" aria-hidden="true">
+      <span e:for={s of STAGES} class={["stages-step", "stage-" + deal.stage, reached(deal, s) && "is-reached"]}></span>
+    </div>
+  </header>
+
+  <div class="deal-grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>Timeline</h2>
+      </div>
+
+      <div class="card-body stack is-lg">
+        <form class="composer stack" onsubmit={() => onLog(composer, activities, deal, me)}>
+          <div class="composer-kinds row">
+            <button type="button" class={["is-sm", composer.kind === "note" && "is-active"]} onclick={() => composer.kind = "note"}>Note</button>
+            <button type="button" class={["is-sm", composer.kind === "call" && "is-active"]} onclick={() => composer.kind = "call"}>Call</button>
+            <button type="button" class={["is-sm", composer.kind === "email" && "is-active"]} onclick={() => composer.kind = "email"}>Email</button>
+          </div>
+          <textarea value={composer.body} aria-label="Activity" placeholder={composer.kind === "call" ? "What was discussed on the call?" : composer.kind === "email" ? "What did the email say?" : "Add a note for the team…"}></textarea>
+          <div class="composer-foot row">
+            <span e:if={composer.error} class="text-danger text-sm" role="alert">{composer.error}</span>
+            <span e:else></span>
+            <button type="submit" class="is-primary">Log {composer.kind}</button>
+          </div>
+        </form>
+
+        <ol e:if={activities.length > 0} class="timeline stack">
+          <li e:for={a of activities.sort(newestFirst)} class={["tl-item", a.kind === "stage" && "is-stage", a.toStage && "stage-" + a.toStage]}>
+            <span class="tl-icon">
+              <svg e:if={a.kind === "stage"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              <svg e:elseif={a.kind === "call"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>
+              <svg e:elseif={a.kind === "email"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+              <svg e:else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </span>
+            <div class="tl-main">
+              <div class="tl-line cluster is-sm">
+                <span><strong>{a.authorName ?? "Someone"}</strong> {a.kind === "stage" ? stageLine(a) : KIND_VERBS[a.kind]}</span>
+                <span class="tl-when">{formatWhen(a.createdAt)}</span>
+              </div>
+              <p e:if={a.body} class="tl-body">{a.body}</p>
+            </div>
+          </li>
+        </ol>
+
+        <p e:else class="empty-note">Nothing logged yet. Notes, calls, emails and stage changes land here.</p>
+      </div>
+    </section>
+
+    <aside class="deal-side stack">
+      <section class="card">
+        <div class="card-head">
+          <h2>Follow-ups</h2>
+        </div>
+        <div class="card-body">
+          <TaskList {tasks}
+                    {me}
+                    {members}
+                    target={{ dealId: deal.id, dealName: deal.name, contactId: null, contactName: null }} />
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Details</h2>
+        </div>
+        <div class="card-body">
+          <form class="deal-edit stack" onsubmit={() => onSave(edit, deals, deal, companies, members)} oninput={() => edit.saved = false}>
+            <p e:if={edit.error} class="callout is-danger" role="alert">{edit.error}</p>
+
+            <div class="field">
+              <label for="edit-name">Name</label>
+              <input id="edit-name" value={edit.name} required>
+            </div>
+
+            <div class="field">
+              <label for="edit-value">Value (USD)</label>
+              <input id="edit-value" type="number" min="0" step="100" value={edit.value}>
+            </div>
+
+            <div class="field">
+              <label for="edit-company">Company</label>
+              <select id="edit-company" value={edit.companyId}>
+                <option value="">No company</option>
+                <option e:for={c of companies} value={c.id}>{c.name}</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="edit-close">Expected close</label>
+              <input id="edit-close" type="date" value={edit.closeOn}>
+            </div>
+
+            <div class="field">
+              <label for="edit-owner">Owner</label>
+              <select id="edit-owner" value={edit.ownerId}>
+                <option value="">Unassigned</option>
+                <option e:for={m of members} value={m.id}>{m.name}</option>
+              </select>
+            </div>
+
+            <div class="deal-edit-actions row">
+              <button e:if={me.role === "owner"} type="button" class="is-ghost deal-delete" onclick={() => onDelete(deals, deal)}>Delete deal</button>
+              <span e:else></span>
+              <span class="row" style={{ gap: "0.75rem" }}>
+                <span e:if={edit.saved} class="text-success text-sm">Saved</span>
+                <button type="submit" class="is-primary">Save</button>
+              </span>
+            </div>
+          </form>
+        </div>
+      </section>
+    </aside>
+  </div>
+</DealView>

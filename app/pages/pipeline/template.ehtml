@@ -1,0 +1,306 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Me } from "#app/shared/services/auth";
+import { Deal } from "#app/shared/services/deals";
+import { CompanyOption } from "#app/shared/services/companies";
+import { Member } from "#app/shared/services/team";
+import { Stage, STAGES, STAGE_LABELS, formatMoney, formatCompactMoney, formatDay, initials, isOpen } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+interface DragState {
+  id: string;
+  over: Stage | "";
+}
+
+interface DealForm {
+  open: boolean;
+  name: string;
+  companyId: string;
+  value: number;
+  stage: Stage;
+  closeOn: string;
+  ownerId: string;
+  error: string;
+}
+
+export function emptyDealForm(ownerId: string, companyId = "", open = false): DealForm {
+  return { open, name: "", companyId, value: 0, stage: "lead", closeOn: "", ownerId, error: "" };
+}
+
+export function inStage(deals: Deal[], stage: Stage): Deal[] {
+  return deals.filter((d) => d.stage === stage).sort((a, b) => b.value - a.value);
+}
+
+export function totalValue(deals: Deal[]): number {
+  return deals.reduce((sum, d) => sum + (d.value || 0), 0);
+}
+
+function visible(deals: LiveView<Deal>, who: string): Deal[] {
+  return who ? deals.filter((d) => d.ownerId === who) : deals.filter(() => true);
+}
+
+function onDragStart(e: DragEvent, drag: DragState, deal: Deal) {
+  drag.id = deal.id;
+  e.dataTransfer?.setData("text/plain", deal.id);
+
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = "move";
+  }
+}
+
+function onDragOver(e: DragEvent, drag: DragState, stage: Stage) {
+  if (!drag.id) {
+    return;
+  }
+
+  e.preventDefault();
+  drag.over = stage;
+}
+
+function onDragLeave(e: DragEvent, drag: DragState, stage: Stage) {
+  let col = e.currentTarget as HTMLElement;
+
+  if (drag.over === stage && !col.contains(e.relatedTarget as Node)) {
+    drag.over = "";
+  }
+}
+
+function onDrop(e: DragEvent, drag: DragState, deals: LiveView<Deal>, stage: Stage) {
+  e.preventDefault();
+
+  let deal = deals.get(drag.id);
+
+  drag.id = "";
+  drag.over = "";
+
+  if (deal) {
+    moveDeal(deals, deal, stage);
+  }
+}
+
+function onDragEnd(drag: DragState) {
+  drag.id = "";
+  drag.over = "";
+}
+
+export function moveDeal(deals: LiveView<Deal>, deal: Deal, stage: Stage) {
+  if (deal.stage !== stage) {
+    deals.update({ ...deal, stage });
+  }
+}
+
+/** The select's binding may already have written the new stage onto the row, so always send it. */
+function onMoveChange(e: Event, deals: LiveView<Deal>, deal: Deal) {
+  deals.update({ ...deal, stage: (e.target as HTMLSelectElement).value as Stage });
+}
+
+/** Scrolls the phone board to a stage's column; the board's snap does the rest. */
+function showStage(stage: Stage): Stage {
+  document.getElementById("stage-" + stage)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  return stage;
+}
+
+/** The stage whose column the phone board is resting on, and its tab brought into view. */
+function stageAt(e: Event, current: Stage): Stage {
+  let board = e.currentTarget as HTMLElement;
+  let col = board.firstElementChild as HTMLElement | null;
+
+  if (!col) {
+    return current;
+  }
+
+  let step = col.offsetWidth + parseFloat(getComputedStyle(board).columnGap || "0");
+  let stage = STAGES[Math.min(STAGES.length - 1, Math.max(0, Math.round(board.scrollLeft / step)))];
+
+  if (stage !== current) {
+    let tab = document.getElementById("stage-tab-" + stage);
+    let list = tab?.parentElement;
+
+    if (tab && list) {
+      list.scrollTo({ left: tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
+    }
+  }
+
+  return stage;
+}
+
+function onCreate(form: DealForm, deals: LiveView<Deal>, companies: CompanyOption[], members: Member[]) {
+  if (!form.name.trim()) {
+    form.error = "Give the deal a name.";
+    return;
+  }
+
+  try {
+    deals.insert(
+      {
+        name: form.name.trim(),
+        companyId: form.companyId || null,
+        value: Number(form.value) || 0,
+        stage: form.stage,
+        closeOn: form.closeOn || null,
+        ownerId: form.ownerId || null,
+        wonAt: null,
+        createdAt: new Date(),
+        companyName: companies.find((c) => c.id === form.companyId)?.name ?? null,
+        ownerName: members.find((m) => m.id === form.ownerId)?.name ?? null,
+      },
+      () => Object.assign(form, emptyDealForm(form.ownerId)),
+    );
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+<html lang="en" class="page-pipeline" (
+  me: Me,
+  deals: LiveView<Deal>,
+  companies: CompanyOption[],
+  members: Member[],
+  form: DealForm,
+  private drag: DragState = { id: "", over: "" } as DragState,
+  private who: string = "",
+  private at: Stage = "lead",
+)>
+  <head>
+    <title>Pipeline · dealwren</title>
+    <meta name="description" content="The team's deals by stage.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="pipeline">
+      <header class="page-head">
+        <div>
+          <h1>Pipeline</h1>
+          <p class="lede">
+            {formatMoney(totalValue(visible(deals, who).filter((d) => isOpen(d.stage))))} open across {visible(deals, who).filter((d) => isOpen(d.stage)).length} deals.
+            <span class="board-hint-wide">Drag a card to change its stage.</span>
+            <span class="board-hint-phone">Swipe between stages, and move a deal with its stage menu.</span>
+          </p>
+        </div>
+
+        <div class="board-tools row">
+          <select value={who} aria-label="Filter by rep">
+            <option value="">Everyone</option>
+            <option e:for={m of members} value={m.id}>{m.name}</option>
+          </select>
+          <button class="is-primary" onclick={() => form.open = !form.open}>New deal</button>
+        </div>
+      </header>
+
+      <div e:if={form.open} class="card deal-new">
+        <div class="card-body">
+          <form class="is-grid" onsubmit={() => onCreate(form, deals, companies, members)}>
+            <p e:if={form.error} class="callout is-danger is-full" role="alert">{form.error}</p>
+
+            <div class="field is-wide">
+              <label for="deal-name">Deal name</label>
+              <input id="deal-name" value={form.name} placeholder="Acme annual plan" focus={true} required>
+            </div>
+
+            <div class="field">
+              <label for="deal-value">Value (USD)</label>
+              <input id="deal-value" type="number" min="0" step="100" value={form.value}>
+            </div>
+
+            <div class="field">
+              <label for="deal-company">Company</label>
+              <select id="deal-company" value={form.companyId}>
+                <option value="">No company</option>
+                <option e:for={c of companies} value={c.id}>{c.name}</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="deal-stage">Stage</label>
+              <select id="deal-stage" value={form.stage}>
+                <option e:for={s of STAGES} value={s}>{STAGE_LABELS[s]}</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="deal-close">Expected close</label>
+              <input id="deal-close" type="date" value={form.closeOn}>
+            </div>
+
+            <div class="field">
+              <label for="deal-owner">Owner</label>
+              <select id="deal-owner" value={form.ownerId}>
+                <option e:for={m of members} value={m.id}>{m.name}</option>
+              </select>
+            </div>
+
+            <div class="deal-new-actions row">
+              <button type="button" class="is-ghost" onclick={() => form.open = false}>Cancel</button>
+              <button type="submit" class="is-primary">Add deal</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <nav class="tab-list board-stages" aria-label="Stages">
+        <button e:for={stage of STAGES}
+                id={"stage-tab-" + stage}
+                type="button"
+                class={["tab", "board-stage", "stage-" + stage, at === stage && "is-active"]}
+                aria-current={at === stage ? "true" : "false"}
+                onclick={() => at = showStage(stage)}>
+          <span class="stage-tag">
+            <span class="stage-dot"></span>{STAGE_LABELS[stage]}
+            <span class="board-stage-count">{inStage(visible(deals, who), stage).length}</span>
+          </span>
+          <span class="board-stage-total money">{formatCompactMoney(totalValue(inStage(visible(deals, who), stage)))}</span>
+        </button>
+      </nav>
+
+      <div class="board" onscroll={(e) => at = stageAt(e, at)}>
+        <section e:for={stage of STAGES}
+                 id={"stage-" + stage}
+                 aria-label={STAGE_LABELS[stage]}
+                 class={["board-col", "stage-" + stage, drag.over === stage && "is-over"]}
+                 ondragover={(e) => onDragOver(e, drag, stage)}
+                 ondragleave={(e) => onDragLeave(e, drag, stage)}
+                 ondrop={(e) => onDrop(e, drag, deals, stage)}>
+          <header class="board-col-head">
+            <h2 class="board-col-title">
+              <span class="stage-tag"><span class="stage-dot"></span>{STAGE_LABELS[stage]}</span>
+              <span class="board-col-count">{inStage(visible(deals, who), stage).length}</span>
+            </h2>
+            <span class="board-col-total money">{formatMoney(totalValue(inStage(visible(deals, who), stage)))}</span>
+          </header>
+
+          <div class="board-cards">
+            <article e:for={deal of inStage(visible(deals, who), stage)}
+                     class={["deal-card", drag.id === deal.id && "is-dragging"]}
+                     draggable="true"
+                     ondragstart={(e) => onDragStart(e, drag, deal)}
+                     ondragend={() => onDragEnd(drag)}>
+              <a class="deal-card-name" href={"/deals/" + deal.id} draggable="false">{deal.name}</a>
+              <span e:if={deal.companyName} class="deal-card-company">{deal.companyName}</span>
+
+              <div class="deal-card-foot">
+                <span class="deal-card-value money">{formatCompactMoney(deal.value)}</span>
+                <span class="deal-card-meta row">
+                  <span e:if={deal.closeOn}>{formatDay(deal.closeOn)}</span>
+                  <span class="avatar is-sm" title={deal.ownerName ?? "Unassigned"}>{initials(deal.ownerName)}</span>
+                </span>
+              </div>
+
+              <label class="deal-card-move">
+                <span class="deal-card-move-label">Move to</span>
+                <select aria-label={"Move " + deal.name + " to stage"} value={deal.stage} onchange={(e) => onMoveChange(e, deals, deal)}>
+                  <option e:for={s of STAGES} value={s}>{STAGE_LABELS[s]}</option>
+                </select>
+              </label>
+            </article>
+
+            <p e:if={inStage(visible(deals, who), stage).length === 0} class="board-empty">
+              <span class="board-hint-wide">Drop a deal here</span>
+              <span class="board-hint-phone">No deals in {STAGE_LABELS[stage].toLowerCase()}</span>
+            </p>
+          </div>
+        </section>
+      </div>
+    </Layout>
+  </body>
+</html>

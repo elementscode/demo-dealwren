@@ -1,0 +1,131 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/list.css";
+
+.crumb {
+  gap: var(--space-1-5);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.crumb a {
+  color: inherit;
+}
+
+.co-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.co-title {
+  gap: var(--space-4);
+}
+
+.co-title .co-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-muted);
+  color: var(--ink-soft);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.co-title h1 {
+  margin: 0;
+  font-size: var(--text-3xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+.co-sub {
+  gap: var(--space-1) var(--space-4);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.co-sub a {
+  color: inherit;
+}
+
+.co-stats {
+  gap: var(--space-6);
+}
+
+.co-stat {
+  display: grid;
+}
+
+.co-stat strong {
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.co-stat span {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.co-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.co-edit {
+  gap: var(--space-3);
+}
+
+.co-edit-actions {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
+
+.co-delete {
+  color: var(--danger);
+}
+
+.gone {
+  padding: var(--space-12) 0;
+  text-align: center;
+}
+
+@media (max-width: 64rem) {
+  .co-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .co-grid .list-name,
+  .co-grid .list-sub {
+    white-space: normal;
+  }
+
+  .co-grid .stage-tag {
+    white-space: nowrap;
+  }
+}

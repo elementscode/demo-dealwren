@@ -1,0 +1,49 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/list.css";
+
+.team-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24rem;
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.invite-form {
+  gap: var(--space-3);
+}
+
+.invite-list {
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.invite-item .list-sub {
+  display: block;
+  font-size: var(--text-xs);
+}
+
+.digest-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 64rem) {
+  .team-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

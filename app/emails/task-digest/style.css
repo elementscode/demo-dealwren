@@ -1,0 +1,31 @@
+@import "#app/shared/styles/email.css";
+
+.email .digest-list {
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.email .digest-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.email .digest-title {
+  font-weight: 600;
+}
+
+.email .digest-meta {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.email .email-button {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #a0521f;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}

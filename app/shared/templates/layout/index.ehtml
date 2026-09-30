@@ -1,0 +1,67 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import { Me, signout } from "#app/shared/services/auth";
+import { initials } from "#app/shared/services/format";
+import { Mark } from "#app/shared/templates/mark";
+
+export type Section = "dashboard" | "pipeline" | "contacts" | "companies" | "tasks" | "team";
+
+function onSignout() {
+  signout();
+  redirect("/signin");
+}
+
+<Layout (me: Me, active: Section)>
+  <div class="app has-sidebar shell">
+    <aside class="shell-nav">
+      <a href="/" class="shell-brand row">
+        <Mark />
+        <span>dealwren</span>
+      </a>
+
+      <nav class="shell-links stack">
+        <a href="/" class={["shell-link", active === "dashboard" && "is-active"]} title="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="/pipeline" class={["shell-link", active === "pipeline" && "is-active"]} title="Pipeline">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>
+          <span>Pipeline</span>
+        </a>
+        <a href="/contacts" class={["shell-link", active === "contacts" && "is-active"]} title="Contacts">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M17 11a3 3 0 1 0 0-6"/><path d="M22 21c0-3-1.8-5.5-4.5-6.5"/></svg>
+          <span>Contacts</span>
+        </a>
+        <a href="/companies" class={["shell-link", active === "companies" && "is-active"]} title="Companies">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10"/><path d="M2 21h20"/><path d="M8 7h4M8 11h4M8 15h4"/></svg>
+          <span>Companies</span>
+        </a>
+        <a href="/tasks" class={["shell-link", active === "tasks" && "is-active"]} title="Tasks">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
+          <span>Tasks</span>
+        </a>
+        <a e:if={me.role === "owner"} href="/team" class={["shell-link", active === "team" && "is-active"]} title="Team">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 7 12 13 2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+          <span>Team</span>
+        </a>
+      </nav>
+
+      <div class="shell-me row">
+        <span class="avatar">{initials(me.name)}</span>
+        <span class="shell-me-who">
+          <span class="shell-me-name">{me.name}</span>
+          <span class="shell-me-role">{me.role}</span>
+        </span>
+        <button class="is-ghost is-sm shell-signout" title="Sign out" aria-label="Sign out" onclick={() => onSignout()}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-main shell-main">
+      <div class="shell-page stack is-lg">
+        <slot/>
+      </div>
+    </div>
+  </div>
+</Layout>

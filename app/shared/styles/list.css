@@ -1,0 +1,136 @@
+/* List pages: contacts and companies share the toolbar, table and new-row form. */
+
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.list-tools input[type="search"] {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.list-tools select {
+  width: auto;
+}
+
+.list-card {
+  position: relative;
+  overflow-x: auto;
+}
+
+.list-table {
+  margin: 0;
+}
+
+.list-table th,
+.list-table td {
+  padding-inline: var(--space-4);
+  vertical-align: middle;
+}
+
+.list-table th {
+  padding-block: var(--space-2-5);
+  background: var(--bg-soft);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.list-table td {
+  padding-block: var(--space-3);
+}
+
+.list-table tbody tr {
+  animation: row-in var(--duration-normal) var(--ease-out);
+}
+
+.list-table tbody tr:hover {
+  background: var(--bg-soft);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.list-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.list-name:hover {
+  color: var(--accent-deep);
+}
+
+.list-sub {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.list-sub a {
+  color: inherit;
+}
+
+.list-actions {
+  width: 1%;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.icon-button {
+  padding-inline: var(--space-2);
+  color: var(--ink-faint);
+}
+
+.icon-button:hover {
+  color: var(--danger);
+}
+
+.icon-button svg {
+  display: block;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.new-form .card-body {
+  padding: var(--space-5);
+}
+
+.new-form form.is-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.new-form-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.list-count {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 48rem) {
+  .new-form form.is-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list-name {
+    min-height: 2.5rem;
+  }
+
+  .list-table .is-wide-only {
+    display: none;
+  }
+}

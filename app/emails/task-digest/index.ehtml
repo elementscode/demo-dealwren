@@ -1,0 +1,30 @@
+import "./style.css";
+import { DueTask } from "#app/shared/services/tasks";
+
+function about(t: DueTask): string {
+  return [t.dealName ?? t.contactName, t.companyName].filter(Boolean).join(" · ");
+}
+
+/**
+ * The 8am email: one person's follow-ups due today.
+ *
+ * @email
+ */
+<html (name: string, day: string, tasks: DueTask[])>
+  <body class="email task-digest">
+    <div class="email-wrap">
+      <h1>Good morning, {name}</h1>
+      <p>You have {tasks.length} {tasks.length === 1 ? "follow-up" : "follow-ups"} due today, {day}.</p>
+      <ul class="digest-list">
+        <li e:for={t of tasks} e:key={(t: DueTask) => t.title + about(t)} class="digest-item">
+          <div class="digest-title">{t.title}</div>
+          <div class="digest-meta">{about(t)}</div>
+        </li>
+      </ul>
+      <p><a class="email-button" href="/tasks">Open your tasks</a></p>
+      <div class="email-footer">
+        <p>dealwren · sent every morning you have something due</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import { setupOwner, MIN_PASSWORD } from "#app/shared/services/auth";
+import { Mark } from "#app/shared/templates/mark";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+interface SetupForm {
+  name: string;
+  email: string;
+  password: string;
+  error: string;
+  busy: boolean;
+}
+
+function onSubmit(form: SetupForm) {
+  form.busy = true;
+
+  try {
+    setupOwner(form.name, form.email, form.password);
+    redirect("/team");
+  } catch (err: any) {
+    form.error = err.message;
+    form.busy = false;
+  }
+}
+
+<html lang="en" class="page-signin" (
+  private form: SetupForm = { name: "", email: "", password: "", error: "", busy: false },
+)>
+  <head>
+    <title>Set up your team · dealwren</title>
+    <meta name="description" content="Create the owner account for your team.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <main class="signin-main center">
+      <div class="signin-panel stack is-lg">
+        <div class="signin-brand row"><Mark /> dealwren</div>
+
+        <div class="card signin-card">
+          <div class="card-body">
+            <form class="stack" onsubmit={() => onSubmit(form)}>
+              <h1 class="signin-title">Set up your team</h1>
+              <p class="muted">You'll be the owner. Invite your reps next.</p>
+
+              <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+              <div class="field">
+                <label for="name">Your name</label>
+                <input id="name" value={form.name} autocomplete="name" required>
+              </div>
+
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" type="email" value={form.email} autocomplete="email" autocapitalize="none" spellcheck={false} required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password" type="password" value={form.password} autocomplete="new-password" minlength={MIN_PASSWORD} required>
+                <p class="hint">At least {MIN_PASSWORD} characters.</p>
+              </div>
+
+              <button type="submit" class={["is-primary is-block", form.busy && "is-loading"]} disabled={form.busy}>Create team</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,222 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { TaskList } from "#app/shared/templates/task-list";
+import { Me } from "#app/shared/services/auth";
+import { Deal, Activity } from "#app/shared/services/deals";
+import { Task } from "#app/shared/services/tasks";
+import { Member } from "#app/shared/services/team";
+import { Stage, STAGES, STAGE_LABELS, formatMoney, formatCompactMoney, formatWhen, initials, isOpen, today, stageLine } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export interface StageTotal {
+  stage: Stage;
+  value: number;
+  count: number;
+}
+
+export interface RepLoad {
+  id: string;
+  name: string;
+  count: number;
+  value: number;
+}
+
+export function stageTotals(deals: Deal[]): StageTotal[] {
+  return STAGES.map((stage) => {
+    let rows = deals.filter((d) => d.stage === stage);
+
+    return { stage, value: rows.reduce((s, d) => s + d.value, 0), count: rows.length };
+  });
+}
+
+export function openPerRep(deals: Deal[], members: Member[]): RepLoad[] {
+  let open = deals.filter((d) => isOpen(d.stage));
+
+  return members
+    .map((m) => {
+      let rows = open.filter((d) => d.ownerId === m.id);
+
+      return { id: m.id, name: m.name, count: rows.length, value: rows.reduce((s, d) => s + d.value, 0) };
+    })
+    .sort((a, b) => b.count - a.count || b.value - a.value);
+}
+
+export function wonThisMonth(deals: Deal[], now: Date = new Date()): Deal[] {
+  return deals.filter((d) => {
+    if (d.stage !== "won" || !d.wonAt) {
+      return false;
+    }
+
+    let at = new Date(d.wonAt);
+
+    return at.getFullYear() === now.getFullYear() && at.getMonth() === now.getMonth();
+  });
+}
+
+function sum(deals: Deal[]): number {
+  return deals.reduce((s, d) => s + d.value, 0);
+}
+
+function openDeals(deals: LiveView<Deal>): Deal[] {
+  return deals.filter((d) => isOpen(d.stage));
+}
+
+function pct(value: number, max: number): string {
+  return max > 0 ? `${(value / max) * 100}%` : "0%";
+}
+
+function maxOf(values: number[]): number {
+  return Math.max(0, ...values);
+}
+
+function recent(activities: LiveView<Activity>): Activity[] {
+  return activities.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 8);
+}
+
+function describe(a: Activity): string {
+  switch (a.kind) {
+    case "stage":
+      return stageLine(a).replace(" it ", " ");
+
+    case "call":
+      return "logged a call on";
+
+    case "email":
+      return "logged an email on";
+
+    default:
+      return "added a note on";
+  }
+}
+
+function dueNow(tasks: LiveView<Task>): number {
+  let t = today();
+
+  return tasks.filter((x) => !x.done && x.dueOn <= t).length;
+}
+
+<html lang="en" class="page-dashboard" (
+  me: Me,
+  deals: LiveView<Deal>,
+  activities: LiveView<Activity>,
+  tasks: LiveView<Task>,
+  members: Member[],
+)>
+  <head>
+    <title>Dashboard · dealwren</title>
+    <meta name="description" content="Pipeline at a glance.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="dashboard">
+      <header class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="lede">Hi {me.name.split(" ")[0]}. Here is where the team stands.</p>
+        </div>
+      </header>
+
+      <section class="stats">
+        <a class="stat is-hero" href="/pipeline">
+          <span class="stat-label">Open pipeline</span>
+          <span class="stat-value money">{formatMoney(sum(openDeals(deals)))}</span>
+          <span class="stat-note">Lead through negotiation</span>
+        </a>
+        <div class="stat">
+          <span class="stat-label">Won this month</span>
+          <span class="stat-value money">{formatCompactMoney(sum(wonThisMonth(deals.filter(() => true))))}</span>
+          <span class="stat-note">{wonThisMonth(deals.filter(() => true)).length} {wonThisMonth(deals.filter(() => true)).length === 1 ? "deal" : "deals"}</span>
+        </div>
+        <a class="stat" href="/pipeline">
+          <span class="stat-label">Open deals</span>
+          <span class="stat-value">{openDeals(deals).length}</span>
+          <span class="stat-note">avg {formatCompactMoney(openDeals(deals).length ? sum(openDeals(deals)) / openDeals(deals).length : 0)} each</span>
+        </a>
+        <a class="stat" href="/tasks">
+          <span class="stat-label">Your tasks due</span>
+          <span class="stat-value">{dueNow(tasks)}</span>
+          <span class="stat-note">today or overdue</span>
+        </a>
+      </section>
+
+      <div class="dash-grid">
+        <section class="card">
+          <div class="card-head">
+            <h2>Pipeline value by stage</h2>
+            <span class="muted">USD</span>
+          </div>
+          <div class="card-body">
+            <ul class="bars" role="list">
+              <li e:for={row of stageTotals(deals.filter(() => true))}
+                  e:key={(row: StageTotal) => row.stage}
+                  class={["bar-row", "stage-" + row.stage]}
+                  title={`${STAGE_LABELS[row.stage]}: ${formatMoney(row.value)} in ${row.count} ${row.count === 1 ? "deal" : "deals"}`}>
+                <span class="bar-label"><span class="stage-dot"></span>{STAGE_LABELS[row.stage]}</span>
+                <span class="bar-track">
+                  <span class={["bar", row.stage === "lost" && "is-muted"]}
+                        style={{ width: `calc((100% - 5rem) * ${row.value} / ${maxOf(stageTotals(deals.filter(() => true)).map((r) => r.value)) || 1})` }}></span>
+                  <span class="bar-value">{formatCompactMoney(row.value)}</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Open deals per rep</h2>
+            <span class="muted">count · value</span>
+          </div>
+          <div class="card-body">
+            <ul class="bars" role="list">
+              <li e:for={rep of openPerRep(deals.filter(() => true), members)}
+                  class="bar-row"
+                  title={`${rep.name}: ${rep.count} open, ${formatMoney(rep.value)}`}>
+                <span class="bar-label"><span class="avatar is-sm">{initials(rep.name)}</span>{rep.name.split(" ")[0]}</span>
+                <span class="bar-track">
+                  <span class="bar"
+                        style={{ width: `calc((100% - 8rem) * ${rep.count} / ${maxOf(openPerRep(deals.filter(() => true), members).map((r) => r.count)) || 1})` }}></span>
+                  <span class="bar-value">{rep.count} open<span class="muted">· {formatCompactMoney(rep.value)}</span></span>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Recent activity</h2>
+            <span class="muted">live</span>
+          </div>
+          <div class="card-body">
+            <ol e:if={activities.length > 0} class="feed stack">
+              <li e:for={a of recent(activities)} class={["feed-item", a.toStage && "stage-" + a.toStage]}>
+                <span class="avatar is-sm">{initials(a.authorName)}</span>
+                <span class="feed-text">
+                  <span>
+                    <strong>{a.authorName ?? "Someone"}</strong> {describe(a)}
+                    {a.kind === "stage" ? " on " : " "}<a href={"/deals/" + a.dealId}>{a.dealName}</a>
+                  </span>
+                  <span e:if={a.body} class="feed-body">{a.body}</span>
+                  <span class="feed-when">{formatWhen(a.createdAt)}</span>
+                </span>
+              </li>
+            </ol>
+            <p e:else class="empty-note">No activity yet.</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Your follow-ups</h2>
+            <a class="text-sm" href="/tasks">All tasks</a>
+          </div>
+          <div class="card-body">
+            <TaskList {tasks} {me} {members} showTarget={true} />
+          </div>
+        </section>
+      </div>
+    </Layout>
+  </body>
+</html>
