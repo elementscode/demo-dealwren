@@ -1,0 +1,76 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import { acceptInvite, MIN_PASSWORD } from "#app/shared/services/auth";
+import { Mark } from "#app/shared/templates/mark";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+interface AcceptForm {
+  name: string;
+  password: string;
+  error: string;
+  busy: boolean;
+}
+
+function onSubmit(form: AcceptForm, token: string) {
+  form.busy = true;
+
+  try {
+    acceptInvite(token, form.name, form.password);
+    redirect("/");
+  } catch (err: any) {
+    form.error = err.message;
+    form.busy = false;
+  }
+}
+
+<html lang="en" class="page-signin" (
+  token: string,
+  email: string,
+  invitedBy: string,
+  private form: AcceptForm = { name: "", password: "", error: "", busy: false },
+)>
+  <head>
+    <title>Join the team · dealwren</title>
+    <meta name="description" content="Accept your dealwren invite.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <main class="signin-main center">
+      <div class="signin-panel stack is-lg">
+        <div class="signin-brand row"><Mark /> dealwren</div>
+
+        <div class="card signin-card">
+          <div class="card-body">
+            <div e:if={!email} class="stack">
+              <h1 class="signin-title">This invite has expired</h1>
+              <p class="muted">It was already used or is more than 14 days old. Ask your team's owner to send a new one.</p>
+              <a class="button" href="/signin">Go to sign in</a>
+            </div>
+
+            <form e:else class="stack" onsubmit={() => onSubmit(form, token)}>
+              <h1 class="signin-title">Join your team</h1>
+              <p class="muted">{invitedBy} invited <strong>{email}</strong>. Pick a name and password to finish.</p>
+
+              <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+              <input type="email" name="email" value={email} autocomplete="username" hidden readonly>
+
+              <div class="field">
+                <label for="name">Your name</label>
+                <input id="name" name="name" value={form.name} autocomplete="name" focus={true} required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" value={form.password} autocomplete="new-password" minlength={MIN_PASSWORD} required>
+                <p class="hint">At least {MIN_PASSWORD} characters.</p>
+              </div>
+
+              <button type="submit" class={["is-primary is-block", form.busy && "is-loading"]} disabled={form.busy}>Join the team</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

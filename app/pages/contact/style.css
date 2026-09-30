@@ -1,0 +1,101 @@
+@import "#app/shared/styles/page.css";
+
+.crumb {
+  gap: var(--space-1-5);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.crumb a {
+  color: inherit;
+}
+
+.person {
+  gap: var(--space-4);
+}
+
+.person .avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--text-lg);
+}
+
+.person h1 {
+  margin: 0;
+  font-size: var(--text-3xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+.person-sub {
+  gap: var(--space-1) var(--space-4);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.person-sub a {
+  color: inherit;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.contact-edit textarea {
+  min-height: 7rem;
+}
+
+.contact-edit-actions {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.contact-delete {
+  color: var(--danger);
+}
+
+.deal-mini {
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.deal-mini li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.deal-mini a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.gone {
+  padding: var(--space-12) 0;
+  text-align: center;
+}
+
+@media (max-width: 64rem) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .person h1 {
+    font-size: var(--text-2xl);
+  }
+}

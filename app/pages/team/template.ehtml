@@ -1,0 +1,184 @@
+import "./style.css";
+import { sql, email, ValidationError } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Me, requireOwner, normalizeEmail, isEmail } from "#app/shared/services/auth";
+import { Member } from "#app/shared/services/team";
+import { initials, formatWhen } from "#app/shared/services/format";
+import { QueueTaskDigestsJob } from "#app/jobs/queue-task-digests";
+import InviteEmail from "#app/emails/invite";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export interface PendingInvite {
+  id: string;
+  email: string;
+  createdAt: Date;
+}
+
+interface InviteForm {
+  email: string;
+  error: string;
+  sent: string;
+}
+
+interface DigestState {
+  note: string;
+}
+
+export function pendingInvites(): PendingInvite[] {
+  return sql<PendingInvite>(
+    `select id, email, createdAt from invites
+     where acceptedAt is null and expiresAt > now()
+     order by createdAt desc`,
+  ).all();
+}
+
+/**
+ * Invite a rep by email. The owner only; one live invite per address.
+ * @rpc
+ */
+export function invite(address: string): PendingInvite[] {
+  let me = requireOwner();
+  let to = normalizeEmail(address);
+
+  if (!isEmail(to)) {
+    throw new ValidationError("enter a valid email address");
+  }
+
+  if (!sql(`select 1 from users where email = ${to}`).empty()) {
+    throw new ValidationError("that person is already on the team");
+  }
+
+  sql(`delete from invites where email = ${to} and acceptedAt is null`);
+
+  let row = sql<{ token: string }>(
+    `insert into invites (email, token, invitedById)
+     values (${to}, encode(gen_random_bytes(24), 'hex'), ${me.id})
+     returning token`,
+  ).firstOrThrow();
+
+  email({
+    to,
+    subject: `${me.name} invited you to dealwren`,
+    body: new InviteEmail({ invitedBy: me.name, acceptUrl: `/invite/${row.token}` }),
+  });
+
+  return pendingInvites();
+}
+
+/** @rpc */
+export function revokeInvite(id: string): PendingInvite[] {
+  requireOwner();
+  sql(`delete from invites where id = ${id} and acceptedAt is null`);
+
+  return pendingInvites();
+}
+
+/**
+ * Run the 8am task email now, for today. Safe to press twice: each person's
+ * digest is keyed by day, so nobody gets a second copy.
+ * @rpc
+ */
+export function sendDigestsNow(): number {
+  requireOwner();
+  new QueueTaskDigestsJob({}).schedule();
+
+  return sql<{ n: number }>(
+    `select count(distinct ownerId)::int as n from tasks where dueOn = current_date and not done and ownerId is not null`,
+  ).firstOrThrow().n;
+}
+
+function onInvite(form: InviteForm, list: { invites: PendingInvite[] }) {
+  try {
+    list.invites = invite(form.email);
+    form.sent = normalizeEmail(form.email);
+    form.email = "";
+    form.error = "";
+  } catch (err: any) {
+    form.error = err.message;
+    form.sent = "";
+  }
+}
+
+function onRevoke(list: { invites: PendingInvite[] }, id: string) {
+  list.invites = revokeInvite(id);
+}
+
+function onSendDigests(state: DigestState) {
+  let n = sendDigestsNow();
+
+  state.note = n === 0 ? "Nobody has anything due today." : `Queued today's email for ${n} ${n === 1 ? "person" : "people"}.`;
+}
+
+<html lang="en" class="page-team" (
+  me: Me,
+  members: Member[],
+  list: { invites: PendingInvite[] },
+  private form: InviteForm = { email: "", error: "", sent: "" },
+  private digest: DigestState = { note: "" },
+)>
+  <head>
+    <title>Team · dealwren</title>
+    <meta name="description" content="Who is on the team, and inviting reps.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="team">
+      <header class="page-head">
+        <div>
+          <h1>Team</h1>
+          <p class="lede">Everyone here sees every record. Only you, the owner, can delete records or export.</p>
+        </div>
+      </header>
+
+      <div class="team-grid">
+        <section class="card list-card">
+          <table class="list-table">
+            <thead>
+              <tr><th>Name</th><th class="is-wide-only">Email</th><th>Role</th></tr>
+            </thead>
+            <tbody>
+              <tr e:for={m of members}>
+                <td><span class="list-name"><span class="avatar is-sm">{initials(m.name)}</span>{m.name}</span></td>
+                <td class="list-sub is-wide-only">{m.email}</td>
+                <td><span class={["pill", m.role === "owner" && "is-accent"]}>{m.role}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <aside class="stack is-lg">
+          <section class="card">
+            <div class="card-head"><h2>Invite a rep</h2></div>
+            <div class="card-body stack">
+              <form class="invite-form stack" onsubmit={() => onInvite(form, list)}>
+                <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+                <p e:if={form.sent} class="callout is-success" role="status">Invite sent to {form.sent}.</p>
+                <div class="field">
+                  <label for="invite-email">Email</label>
+                  <input id="invite-email" type="email" value={form.email} placeholder="rep@yourcompany.com" autocomplete="off" autocapitalize="none" spellcheck={false} required>
+                </div>
+                <button type="submit" class="is-primary">Send invite</button>
+              </form>
+
+              <ul e:if={list.invites.length > 0} class="invite-list stack">
+                <li e:for={i of list.invites} class="invite-item">
+                  <span>{i.email}<span class="list-sub">invited {formatWhen(i.createdAt)}</span></span>
+                  <button class="is-ghost is-sm" onclick={() => onRevoke(list, i.id)}>Revoke</button>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Morning task email</h2></div>
+            <div class="card-body stack">
+              <p class="digest-note">Every day at 8am, each person with follow-ups due that day gets a list of them by email.</p>
+              <p e:if={digest.note} class="callout is-info" role="status">{digest.note}</p>
+              <button onclick={() => onSendDigests(digest)}>Send today's emails now</button>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </Layout>
+  </body>
+</html>

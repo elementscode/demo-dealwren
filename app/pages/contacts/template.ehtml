@@ -1,0 +1,196 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Me } from "#app/shared/services/auth";
+import { Contact } from "#app/shared/services/contacts";
+import { CompanyOption } from "#app/shared/services/companies";
+import { Member } from "#app/shared/services/team";
+import { initials } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+interface Filters {
+  q: string;
+  companyId: string;
+}
+
+interface ContactForm {
+  open: boolean;
+  name: string;
+  email: string;
+  phone: string;
+  companyId: string;
+  ownerId: string;
+  error: string;
+}
+
+export function emptyContactForm(ownerId: string, companyId = "", open = false): ContactForm {
+  return { open, name: "", email: "", phone: "", companyId, ownerId, error: "" };
+}
+
+export function matches(c: Contact, f: Filters): boolean {
+  let q = f.q.trim().toLowerCase();
+
+  if (f.companyId && c.companyId !== f.companyId) {
+    return false;
+  }
+
+  if (!q) {
+    return true;
+  }
+
+  return [c.name, c.email, c.phone, c.companyName ?? "", c.ownerName ?? ""].some((v) => v.toLowerCase().includes(q));
+}
+
+function shown(contacts: LiveView<Contact>, f: Filters): Contact[] {
+  return contacts.filter((c) => matches(c, f)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function onCreate(form: ContactForm, contacts: LiveView<Contact>, companies: CompanyOption[], members: Member[]) {
+  if (!form.name.trim()) {
+    form.error = "Give the contact a name.";
+    return;
+  }
+
+  try {
+    contacts.insert(
+      {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        notes: "",
+        companyId: form.companyId || null,
+        ownerId: form.ownerId || null,
+        companyName: companies.find((c) => c.id === form.companyId)?.name ?? null,
+        ownerName: members.find((m) => m.id === form.ownerId)?.name ?? null,
+        createdAt: new Date(),
+      },
+      () => Object.assign(form, emptyContactForm(form.ownerId, "", true)),
+    );
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function onDelete(contacts: LiveView<Contact>, contact: Contact) {
+  if (confirm(`Delete ${contact.name}? Their follow-ups go with them.`)) {
+    contacts.delete(contact);
+  }
+}
+
+<html lang="en" class="page-contacts" (
+  me: Me,
+  contacts: LiveView<Contact>,
+  companies: CompanyOption[],
+  members: Member[],
+  form: ContactForm,
+  private filters: Filters = { q: "", companyId: "" },
+)>
+  <head>
+    <title>Contacts · dealwren</title>
+    <meta name="description" content="Everyone the team is talking to.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="contacts">
+      <header class="page-head">
+        <div>
+          <h1>Contacts</h1>
+          <p class="lede">{contacts.length} people across {companies.length} companies.</p>
+        </div>
+        <div class="row" style={{ gap: "0.5rem" }}>
+          <a e:if={me.role === "owner"} class="button" href="/contacts.csv" download="dealwren-contacts.csv">Export CSV</a>
+          <button class="is-primary" onclick={() => form.open = !form.open}>New contact</button>
+        </div>
+      </header>
+
+      <div e:if={form.open} class="card new-form">
+        <div class="card-body">
+          <form class="is-grid" onsubmit={() => onCreate(form, contacts, companies, members)}>
+            <p e:if={form.error} class="callout is-danger is-full" role="alert">{form.error}</p>
+
+            <div class="field">
+              <label for="c-name">Name</label>
+              <input id="c-name" value={form.name} focus={true} required>
+            </div>
+
+            <div class="field">
+              <label for="c-email">Email</label>
+              <input id="c-email" type="email" value={form.email} autocomplete="off">
+            </div>
+
+            <div class="field">
+              <label for="c-phone">Phone</label>
+              <input id="c-phone" type="tel" value={form.phone}>
+            </div>
+
+            <div class="field">
+              <label for="c-company">Company</label>
+              <select id="c-company" value={form.companyId}>
+                <option value="">No company</option>
+                <option e:for={c of companies} value={c.id}>{c.name}</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="c-owner">Owning rep</label>
+              <select id="c-owner" value={form.ownerId}>
+                <option e:for={m of members} value={m.id}>{m.name}</option>
+              </select>
+            </div>
+
+            <div class="new-form-actions row">
+              <button type="button" class="is-ghost" onclick={() => form.open = false}>Done</button>
+              <button type="submit" class="is-primary">Add contact</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="list-tools">
+        <input type="search" value={filters.q} placeholder="Search name, email, phone, company…" aria-label="Search contacts">
+        <select value={filters.companyId} aria-label="Filter by company">
+          <option value="">All companies</option>
+          <option e:for={c of companies} value={c.id}>{c.name}</option>
+        </select>
+      </div>
+
+      <div class="card list-card">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Company</th>
+              <th class="is-wide-only">Email</th>
+              <th class="is-wide-only">Phone</th>
+              <th class="is-wide-only">Owner</th>
+              <th e:if={me.role === "owner"}><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr e:for={c of shown(contacts, filters)}>
+              <td>
+                <a class="list-name" href={"/contacts/" + c.id}>
+                  <span class="avatar is-sm">{initials(c.name)}</span>
+                  {c.name}
+                </a>
+              </td>
+              <td class="list-sub">
+                <a e:if={c.companyId} href={"/companies/" + c.companyId}>{c.companyName}</a>
+                <span e:else>–</span>
+              </td>
+              <td class="list-sub is-wide-only"><a e:if={c.email} href={"mailto:" + c.email}>{c.email}</a></td>
+              <td class="list-sub is-wide-only">{c.phone}</td>
+              <td class="list-sub is-wide-only">{c.ownerName ?? "Unassigned"}</td>
+              <td e:if={me.role === "owner"} class="list-actions">
+                <button class="is-ghost is-sm icon-button" title={"Delete " + c.name} aria-label={"Delete " + c.name} onclick={() => onDelete(contacts, c)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p e:if={shown(contacts, filters).length === 0} class="empty-note">No contacts match.</p>
+      </div>
+    </Layout>
+  </body>
+</html>

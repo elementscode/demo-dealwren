@@ -1,0 +1,213 @@
+@import "#app/shared/styles/page.css";
+
+.deal-crumb {
+  gap: var(--space-1-5);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.deal-crumb a {
+  color: inherit;
+}
+
+.deal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.deal-head h1 {
+  margin: 0;
+  font-size: var(--text-3xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+.deal-sub {
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.deal-value {
+  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.deal-stage-pick {
+  gap: var(--space-2);
+}
+
+.deal-stage-pick select {
+  width: auto;
+  min-width: 10rem;
+}
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-1);
+}
+
+.stages-step {
+  height: 0.375rem;
+  border-radius: var(--radius-full);
+  background: var(--rule);
+}
+
+.stages-step.is-reached {
+  background: var(--stage);
+}
+
+.deal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.deal-side {
+  gap: var(--space-5);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.composer {
+  gap: var(--space-2);
+}
+
+.composer-kinds {
+  gap: var(--space-1);
+}
+
+.composer-kinds button.is-active {
+  border-color: var(--accent-edge);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.composer textarea {
+  min-height: 5rem;
+}
+
+.composer-foot {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.timeline {
+  position: relative;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  inset: var(--space-4) auto var(--space-4) calc(1rem - 1px);
+  width: 2px;
+  background: var(--rule-soft);
+}
+
+.tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  animation: tl-in var(--duration-slow) var(--ease-out);
+}
+
+@keyframes tl-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.tl-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  color: var(--ink-soft);
+}
+
+.tl-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.tl-item.is-stage .tl-icon {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--stage) 16%, var(--bg));
+  color: var(--stage);
+}
+
+.tl-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-top: var(--space-1-5);
+}
+
+.tl-line {
+  font-size: var(--text-sm);
+}
+
+.tl-when {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.tl-body {
+  margin: 0;
+  padding: var(--space-2-5) var(--space-3);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+}
+
+.deal-edit {
+  gap: var(--space-3);
+}
+
+.deal-edit-actions {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.deal-delete {
+  color: var(--danger);
+}
+
+.deal-gone {
+  padding: var(--space-12) 0;
+  text-align: center;
+}
+
+@media (max-width: 64rem) {
+  .deal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .deal-head h1 {
+    font-size: var(--text-2xl);
+  }
+}

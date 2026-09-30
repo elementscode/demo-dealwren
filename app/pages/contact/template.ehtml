@@ -1,0 +1,210 @@
+import "./style.css";
+import { LiveView, redirect } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { TaskList } from "#app/shared/templates/task-list";
+import { Me } from "#app/shared/services/auth";
+import { Contact } from "#app/shared/services/contacts";
+import { Task } from "#app/shared/services/tasks";
+import { DealSummary } from "#app/shared/services/deals";
+import { CompanyOption } from "#app/shared/services/companies";
+import { Member } from "#app/shared/services/team";
+import { STAGE_LABELS, formatCompactMoney, initials } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export interface ContactEdit {
+  name: string;
+  email: string;
+  phone: string;
+  companyId: string;
+  ownerId: string;
+  notes: string;
+  saved: boolean;
+  error: string;
+}
+
+export function editFor(c: Contact): ContactEdit {
+  return {
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    companyId: c.companyId ?? "",
+    ownerId: c.ownerId ?? "",
+    notes: c.notes,
+    saved: false,
+    error: "",
+  };
+}
+
+function onSave(edit: ContactEdit, contacts: LiveView<Contact>, c: Contact, companies: CompanyOption[], members: Member[]) {
+  try {
+    contacts.update({
+      ...c,
+      name: edit.name.trim(),
+      email: edit.email.trim(),
+      phone: edit.phone.trim(),
+      notes: edit.notes,
+      companyId: edit.companyId || null,
+      ownerId: edit.ownerId || null,
+      companyName: companies.find((x) => x.id === edit.companyId)?.name ?? null,
+      ownerName: members.find((m) => m.id === edit.ownerId)?.name ?? null,
+    });
+    edit.error = "";
+    edit.saved = true;
+  } catch (err: any) {
+    edit.error = err.message;
+    edit.saved = false;
+  }
+}
+
+function onDelete(contacts: LiveView<Contact>, c: Contact) {
+  if (!confirm(`Delete ${c.name}? Their follow-ups go with them.`)) {
+    return;
+  }
+
+  contacts.delete(c);
+  redirect("/contacts");
+}
+
+<html lang="en" class="page-contact" (
+  me: Me,
+  contactId: string,
+  contacts: LiveView<Contact>,
+  tasks: LiveView<Task>,
+  deals: DealSummary[],
+  companies: CompanyOption[],
+  members: Member[],
+  edit: ContactEdit,
+)>
+  <head>
+    <title>{contacts.get(contactId)?.name ?? "Contact"} · dealwren</title>
+    <meta name="description" content="Contact details and follow-ups.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="contacts">
+      <nav class="crumb row">
+        <a href="/contacts">Contacts</a>
+        <span>/</span>
+        <span>Contact</span>
+      </nav>
+
+      <div e:if={!contacts.get(contactId)} class="gone stack">
+        <h1>This contact was deleted</h1>
+        <p><a class="button" href="/contacts">Back to contacts</a></p>
+      </div>
+
+      <ContactView e:else {me} c={contacts.get(contactId)!} {contacts} {tasks} {deals} {companies} {members} {edit} />
+    </Layout>
+  </body>
+</html>
+
+<ContactView (
+  me: Me,
+  c: Contact,
+  contacts: LiveView<Contact>,
+  tasks: LiveView<Task>,
+  deals: DealSummary[],
+  companies: CompanyOption[],
+  members: Member[],
+  edit: ContactEdit,
+)>
+  <header class="person row">
+    <span class="avatar">{initials(c.name)}</span>
+    <div class="stack is-xs">
+      <h1>{c.name}</h1>
+      <div class="person-sub cluster">
+        <a e:if={c.companyId} href={"/companies/" + c.companyId}>{c.companyName}</a>
+        <a e:if={c.email} href={"mailto:" + c.email}>{c.email}</a>
+        <a e:if={c.phone} href={"tel:" + c.phone}>{c.phone}</a>
+        <span>Owned by {c.ownerName ?? "nobody"}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="detail-grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>Details</h2>
+      </div>
+      <div class="card-body">
+        <form class="is-grid contact-edit" onsubmit={() => onSave(edit, contacts, c, companies, members)} oninput={() => edit.saved = false}>
+          <p e:if={edit.error} class="callout is-danger is-full" role="alert">{edit.error}</p>
+
+          <div class="field">
+            <label for="e-name">Name</label>
+            <input id="e-name" value={edit.name} required>
+          </div>
+
+          <div class="field">
+            <label for="e-email">Email</label>
+            <input id="e-email" type="email" value={edit.email}>
+          </div>
+
+          <div class="field">
+            <label for="e-phone">Phone</label>
+            <input id="e-phone" type="tel" value={edit.phone}>
+          </div>
+
+          <div class="field">
+            <label for="e-company">Company</label>
+            <select id="e-company" value={edit.companyId}>
+              <option value="">No company</option>
+              <option e:for={x of companies} value={x.id}>{x.name}</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="e-owner">Owning rep</label>
+            <select id="e-owner" value={edit.ownerId}>
+              <option value="">Unassigned</option>
+              <option e:for={m of members} value={m.id}>{m.name}</option>
+            </select>
+          </div>
+
+          <div class="field is-full">
+            <label for="e-notes">Notes</label>
+            <textarea id="e-notes" value={edit.notes} placeholder="Anything the team should know"></textarea>
+          </div>
+
+          <div class="contact-edit-actions row">
+            <button e:if={me.role === "owner"} type="button" class="is-ghost contact-delete" onclick={() => onDelete(contacts, c)}>Delete contact</button>
+            <span e:else></span>
+            <span class="row" style={{ gap: "0.75rem" }}>
+              <span e:if={edit.saved} class="text-success text-sm">Saved</span>
+              <button type="submit" class="is-primary">Save</button>
+            </span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="stack is-lg">
+      <section class="card">
+        <div class="card-head">
+          <h2>Follow-ups</h2>
+        </div>
+        <div class="card-body">
+          <TaskList {tasks}
+                    {me}
+                    {members}
+                    target={{ contactId: c.id, contactName: c.name, dealId: null, dealName: null }} />
+        </div>
+      </section>
+
+      <section e:if={c.companyId} class="card">
+        <div class="card-head">
+          <h2>{c.companyName} deals</h2>
+        </div>
+        <div class="card-body">
+          <ul e:if={deals.length > 0} class="deal-mini stack">
+            <li e:for={d of deals} class={"stage-" + d.stage}>
+              <a href={"/deals/" + d.id}><span class="stage-dot"></span>{d.name}</a>
+              <span class="muted money">{formatCompactMoney(d.value)} · {STAGE_LABELS[d.stage]}</span>
+            </li>
+          </ul>
+          <p e:else class="empty-note">No deals with this company yet.</p>
+        </div>
+      </section>
+    </aside>
+  </div>
+</ContactView>

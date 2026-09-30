@@ -1,0 +1,151 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Me } from "#app/shared/services/auth";
+import { Company } from "#app/shared/services/companies";
+import { Contact } from "#app/shared/services/contacts";
+import { Deal } from "#app/shared/services/deals";
+import { formatCompactMoney, initials, isOpen } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+interface CompanyForm {
+  open: boolean;
+  name: string;
+  domain: string;
+  industry: string;
+  error: string;
+}
+
+function emptyForm(open: boolean): CompanyForm {
+  return { open, name: "", domain: "", industry: "", error: "" };
+}
+
+export function openValue(deals: Deal[], companyId: string): number {
+  return deals.filter((d) => d.companyId === companyId && isOpen(d.stage)).reduce((s, d) => s + d.value, 0);
+}
+
+function shown(companies: LiveView<Company>, q: string): Company[] {
+  let needle = q.trim().toLowerCase();
+
+  return companies
+    .filter((c) => !needle || [c.name, c.domain, c.industry].some((v) => v.toLowerCase().includes(needle)))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function onCreate(form: CompanyForm, companies: LiveView<Company>) {
+  if (!form.name.trim()) {
+    form.error = "Give the company a name.";
+    return;
+  }
+
+  try {
+    companies.insert(
+      { name: form.name.trim(), domain: form.domain.trim(), industry: form.industry.trim(), createdAt: new Date() },
+      () => Object.assign(form, emptyForm(true)),
+    );
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function onDelete(companies: LiveView<Company>, c: Company) {
+  if (confirm(`Delete ${c.name}? Its contacts and deals stay, without a company.`)) {
+    companies.delete(c);
+  }
+}
+
+<html lang="en" class="page-companies" (
+  me: Me,
+  companies: LiveView<Company>,
+  contacts: LiveView<Contact>,
+  deals: LiveView<Deal>,
+  private form: CompanyForm = emptyForm(false),
+  private q: string = "",
+)>
+  <head>
+    <title>Companies · dealwren</title>
+    <meta name="description" content="Every account the team works.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="companies">
+      <header class="page-head">
+        <div>
+          <h1>Companies</h1>
+          <p class="lede">{companies.length} accounts.</p>
+        </div>
+        <button class="is-primary" onclick={() => form.open = !form.open}>New company</button>
+      </header>
+
+      <div e:if={form.open} class="card new-form">
+        <div class="card-body">
+          <form class="is-grid" onsubmit={() => onCreate(form, companies)}>
+            <p e:if={form.error} class="callout is-danger is-full" role="alert">{form.error}</p>
+
+            <div class="field">
+              <label for="co-name">Name</label>
+              <input id="co-name" value={form.name} focus={true} required>
+            </div>
+
+            <div class="field">
+              <label for="co-domain">Website</label>
+              <input id="co-domain" value={form.domain} placeholder="acme.com">
+            </div>
+
+            <div class="field">
+              <label for="co-industry">Industry</label>
+              <input id="co-industry" value={form.industry}>
+            </div>
+
+            <div class="new-form-actions row">
+              <button type="button" class="is-ghost" onclick={() => form.open = false}>Done</button>
+              <button type="submit" class="is-primary">Add company</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="list-tools">
+        <input type="search" value={q} placeholder="Search companies…" aria-label="Search companies">
+      </div>
+
+      <div class="card list-card">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th class="is-wide-only">Industry</th>
+              <th class="num is-wide-only">Contacts</th>
+              <th class="num is-wide-only">Deals</th>
+              <th class="num">Open value</th>
+              <th e:if={me.role === "owner"}><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr e:for={c of shown(companies, q)}>
+              <td>
+                <a class="list-name" href={"/companies/" + c.id}>
+                  <span class="co-mark">{initials(c.name)}</span>
+                  <span>
+                    {c.name}
+                    <span e:if={c.domain} class="list-sub" style={{ display: "block", "font-weight": "400" }}>{c.domain}</span>
+                  </span>
+                </a>
+              </td>
+              <td class="list-sub is-wide-only">{c.industry}</td>
+              <td class="num is-wide-only">{contacts.filter((x) => x.companyId === c.id).length}</td>
+              <td class="num is-wide-only">{deals.filter((d) => d.companyId === c.id).length}</td>
+              <td class="num money">{formatCompactMoney(openValue(deals.filter(() => true), c.id))}</td>
+              <td e:if={me.role === "owner"} class="list-actions">
+                <button class="is-ghost is-sm icon-button" title={"Delete " + c.name} aria-label={"Delete " + c.name} onclick={() => onDelete(companies, c)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p e:if={shown(companies, q).length === 0} class="empty-note">No companies match.</p>
+      </div>
+    </Layout>
+  </body>
+</html>

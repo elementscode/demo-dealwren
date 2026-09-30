@@ -1,0 +1,206 @@
+@import "#app/shared/styles/page.css";
+
+.page-pipeline .shell-page {
+  min-height: 100dvh;
+}
+
+.board-tools {
+  gap: var(--space-2);
+}
+
+.board-tools select {
+  width: auto;
+}
+
+.deal-new .card-body {
+  padding: var(--space-5);
+}
+
+.deal-new form.is-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.deal-new .field.is-wide {
+  grid-column: span 2;
+}
+
+.deal-new-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.board {
+  display: grid;
+  grid-auto-columns: minmax(10.5rem, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-2-5);
+  padding-bottom: var(--space-4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.board-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 24rem;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  scroll-snap-align: start;
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+
+.board-col.is-over {
+  border-color: var(--stage);
+  background: color-mix(in oklab, var(--stage) 8%, var(--bg-soft));
+}
+
+.board-col-head {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-top: 3px solid var(--stage);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.board-col-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.board-col-count {
+  color: var(--ink-soft);
+  font-weight: var(--weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-col-total {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.board-cards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-3);
+}
+
+.board-empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 5rem;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-md);
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+.deal-card {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: var(--shadow-xs);
+  color: var(--ink);
+  text-decoration: none;
+  cursor: grab;
+  transition: box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast);
+  animation: deal-in var(--duration-normal) var(--ease-out);
+}
+
+.deal-card:hover {
+  border-color: var(--rule-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.deal-card.is-dragging {
+  opacity: 0.4;
+}
+
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.deal-card-name:hover {
+  color: var(--accent-deep);
+}
+
+.deal-card-name {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.deal-card-company {
+  margin-top: calc(var(--space-1-5) * -1);
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.deal-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.deal-card-value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.deal-card-meta {
+  gap: var(--space-1-5);
+  color: var(--ink-soft);
+}
+
+.deal-card-move {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 48rem) {
+  .deal-card {
+    cursor: default;
+  }
+
+  .deal-card-move {
+    display: block;
+    height: var(--input-height-sm);
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 48rem) {
+  .board {
+    grid-auto-columns: 82%;
+    margin-inline: calc(var(--space-4) * -1);
+    padding-inline: var(--space-4);
+  }
+
+  .deal-new form.is-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .deal-new .field.is-wide {
+    grid-column: auto;
+  }
+}

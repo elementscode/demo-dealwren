@@ -1,0 +1,16 @@
+@import "#app/shared/styles/email.css";
+
+.email .email-button {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #a0521f;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.email .email-muted {
+  color: #6b7280;
+  font-size: 14px;
+}

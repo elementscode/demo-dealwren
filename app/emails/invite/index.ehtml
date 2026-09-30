@@ -1,0 +1,20 @@
+import "./style.css";
+
+/**
+ * Sent when the owner invites a rep. The link carries the invite token.
+ *
+ * @email
+ */
+<html (invitedBy: string, acceptUrl: string)>
+  <body class="email invite">
+    <div class="email-wrap">
+      <h1>Join your team on dealwren</h1>
+      <p>{invitedBy} invited you to the team's CRM: contacts, companies, the deal pipeline and your follow-ups, all in one place.</p>
+      <p><a class="email-button" href={acceptUrl}>Accept the invite</a></p>
+      <p class="email-muted">The link works once and expires in 14 days. If you weren't expecting this, you can ignore it.</p>
+      <div class="email-footer">
+        <p>dealwren</p>
+      </div>
+    </div>
+  </body>
+</html>

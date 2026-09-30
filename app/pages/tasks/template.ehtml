@@ -1,0 +1,75 @@
+import "./style.css";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { TaskList } from "#app/shared/templates/task-list";
+import { Me } from "#app/shared/services/auth";
+import { Task } from "#app/shared/services/tasks";
+import { Member } from "#app/shared/services/team";
+import { today } from "#app/shared/services/format";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+export function isLate(t: Task): boolean {
+  return !t.done && t.dueOn < today();
+}
+
+export function isToday(t: Task): boolean {
+  return !t.done && t.dueOn === today();
+}
+
+export function isUpcoming(t: Task): boolean {
+  return !t.done && t.dueOn > today();
+}
+
+function isDone(t: Task): boolean {
+  return t.done;
+}
+
+<html lang="en" class="page-tasks" (
+  me: Me,
+  everyone: boolean,
+  tasks: LiveView<Task>,
+  members: Member[],
+)>
+  <head>
+    <title>Tasks · dealwren</title>
+    <meta name="description" content="Follow-ups by due date.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {me} active="tasks">
+      <header class="page-head">
+        <div>
+          <h1>Tasks</h1>
+          <p class="lede">Add a follow-up from any contact or deal. Each morning at 8am, everyone gets an email of what is due that day.</p>
+        </div>
+      </header>
+
+      <div class="tab-list">
+        <a class={["tab", !everyone && "is-active"]} href="/tasks">Mine</a>
+        <a class={["tab", everyone && "is-active"]} href="/tasks?who=all">Everyone</a>
+      </div>
+
+      <div class="task-groups">
+        <section e:if={tasks.filter(isLate).length > 0} class="card group-late">
+          <div class="card-head"><h2>Overdue</h2><span class="muted">{tasks.filter(isLate).length}</span></div>
+          <div class="card-body"><TaskList {tasks} {me} {members} showTarget={true} only={isLate} /></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Today</h2><span class="muted">{tasks.filter(isToday).length}</span></div>
+          <div class="card-body"><TaskList {tasks} {me} {members} showTarget={true} only={isToday} empty="Nothing due today." /></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Upcoming</h2><span class="muted">{tasks.filter(isUpcoming).length}</span></div>
+          <div class="card-body"><TaskList {tasks} {me} {members} showTarget={true} only={isUpcoming} empty="Nothing scheduled." /></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Done</h2><span class="muted">{tasks.filter(isDone).length}</span></div>
+          <div class="card-body"><TaskList {tasks} {me} {members} showTarget={true} only={isDone} empty="Nothing ticked off yet." /></div>
+        </section>
+      </div>
+    </Layout>
+  </body>
+</html>
