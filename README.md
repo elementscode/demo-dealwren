@@ -1,10 +1,12 @@
+![Dealwren, a CRM for a small sales team built with Elements: the pipeline board with a column per stage, each with its deal count and total value, and deal cards showing company, value, close date and owning rep.](https://elements.dev/demos/01a0f399-f3bb-7c53-af59-10b9fa312a32/poster?v=d2083e8029b6)
+
 # Dealwren
 
 > A demo app built with [Elements](https://elements.dev).
 
 Contacts, companies and deals on a drag-and-drop pipeline board, with deal timelines, follow-up tasks, a morning task email and CSV export, all live.
 
-**Demo:** [Dealwren](TBD)
+**Demo:** [Dealwren](https://elements.dev/demos/01a0f399-f3bb-7c53-af59-10b9fa312a32)
 
 ## Agent specs
 
