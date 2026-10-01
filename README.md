@@ -25,7 +25,7 @@ elements create dealwren -scaffold=elementscode/demo-dealwren
 
 ## How it's built
 
-Dealwren needed owner and rep accounts, email invites, a pipeline board and deal timelines that update for the whole team, a CSV export, and a morning email of each rep's tasks. Each of those is a part of Elements, so the agent spent its 25 minutes on the CRM itself.
+Dealwren needed owner and rep accounts, email invites, a pipeline board and deal timelines that update for everyone on the team, a CSV export, and a morning email of each rep's tasks. Each of those is a part of Elements, so the agent spent its 25 minutes on the CRM itself.
 
 ### What Elements gave the app
 
