@@ -30,9 +30,13 @@ Dealwren needed owner and rep accounts, email invites, a pipeline board and deal
 ### What Elements gave the app
 
 - **Live records.** Deals, timeline entries, contacts, companies and tasks are LiveTables. Dragging a deal to a new stage saves it and logs the stage change on the deal's timeline in one transaction, and a database trigger broadcasts each timeline entry, so the move shows on every open board, timeline and dashboard.
+
 - **Morning task emails.** A one-line cron schedule runs a job at 8am that queues one email per rep listing the follow-ups due that day, keyed so each rep gets one email a day.
+
 - **Invites by email.** The owner invites a rep by email from an `@rpc` function, and the invite link signs the new rep in.
+
 - **Owner-only actions.** One guard on the signed-in user's role lets only the owner delete records or invite, and the owner downloads contacts as CSV.
+
 - **Data from SQL files.** Migrations define the schema, seed an owner, two reps, five companies, ten contacts and fifteen deals with timelines and tasks, and add the timeline trigger. The project server applied each one as soon as it was saved.
 
 ### What the project server gave the agent
