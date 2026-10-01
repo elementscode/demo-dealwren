@@ -35,9 +35,13 @@ Dealwren needed owner and rep accounts, email invites, a pipeline board and deal
 - **Roles in one guard.** `requireOwner` in `app/shared/services/auth.ts` guards every table's `delete` handler and the invite rpc, and `exportCsv`, served at `/contacts.csv`, gives the owner a spreadsheet of contacts.
 - **Data from SQL files.** Three migrations define the schema, seed an owner, two reps, five companies, ten contacts and fifteen deals with timelines and tasks, and add the activities trigger. The project server applied each one as soon as it was saved.
 
-### What the agent got from the tooling
+### What the project server gave the agent
 
-The agent ran 43 builds in 25 minutes. It checked its work after each edit and kept going. The build caught one error, a LiveTable `select` that returned a query result where the table expects rows, with a message that spelled out the type it wanted. It read 41 manual pages as it reached each part, from `livetable/partitions` and `livetable/handlers` to `jobs`, then wrote 43 tests. In a real browser it dragged deals across the board, watched the move and new notes arrive in a second tab, ran an invite from email to signed-in rep, and checked five pages at phone width.
+The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
+
+### What shipped
+
+The app type-checks with zero errors and all 43 tests pass. Every page was checked on desktop and phone before publishing, along with board moves and new notes arriving in a second tab and an invite run from email to signed-in rep. The repo was installed fresh from GitHub and run before the demo went live.
 
 Start in `app/shared/services/deals.ts`.
 
