@@ -41,7 +41,7 @@ The project server runs alongside the agent and answers as soon as a file is sav
 
 ### What shipped
 
-The app type-checks with zero errors and all 43 tests pass. Every page was checked on desktop and phone before publishing, along with board moves and new notes arriving in a second tab and an invite run from email to signed-in rep.
+The app type-checks with zero errors and all 43 tests pass. Every page works on desktop and phone, and live updates arrive across tabs, such as a board move or a new note appearing on another open board and timeline.
 
 Start in `app/shared/services/deals.ts`.
 
