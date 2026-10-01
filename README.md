@@ -23,6 +23,24 @@ app.
 elements create dealwren -scaffold=elementscode/demo-dealwren
 ```
 
+## How it's built
+
+Dealwren needed owner and rep accounts, email invites, a pipeline board and deal timelines that update for the whole team, a CSV export, and a morning email of each rep's tasks. Each of those is a part of Elements, so the agent spent its 25 minutes on the CRM itself.
+
+### What Elements gave the app
+
+- **Live records.** Deals, activities, contacts, companies and tasks are LiveTables in `app/shared/services/`. Dragging a card on the pipeline board goes through the `update` handler of `deals` in `deals.ts`, which logs the stage change on the deal's timeline in the same transaction. A trigger in the third migration notifies the pinned `activities` channel, so the move appears on every open board, timeline and dashboard.
+- **Background work on a schedule.** One line in `index.ts`, `app.cron("every day at 8am", ...)`, schedules `QueueTaskDigestsJob`, which queues a `SendTaskDigestJob` per rep with an idempotency key. Each rep gets one `task-digest` email listing the follow-ups due that day.
+- **Invites by email.** The `invite` rpc in `app/pages/team/template.ehtml` creates a token and sends the `invite` email template. The `/invite/:token` page signs the new rep in.
+- **Roles in one guard.** `requireOwner` in `app/shared/services/auth.ts` guards every table's `delete` handler and the invite rpc, and `exportCsv`, served at `/contacts.csv`, gives the owner a spreadsheet of contacts.
+- **Data from SQL files.** Three migrations define the schema, seed an owner, two reps, five companies, ten contacts and fifteen deals with timelines and tasks, and add the activities trigger. The project server applied each one as soon as it was saved.
+
+### What the agent got from the tooling
+
+The agent ran 43 builds in 25 minutes. By the build's own timer, the median build finished in 45 milliseconds, so it checked its work after each edit and kept going. The build caught one error, a LiveTable `select` that returned a query result where the table expects rows, with a message that spelled out the type it wanted. It read 41 manual pages as it reached each part, from `livetable/partitions` and `livetable/handlers` to `jobs`, then wrote 43 tests. In a real browser it dragged deals across the board, watched the move and new notes arrive in a second tab, ran an invite from email to signed-in rep, and checked five pages at phone width.
+
+Start in `app/shared/services/deals.ts`.
+
 ## Demo accounts
 
 The seed creates one owner and two reps, five companies, ten contacts, fifteen
