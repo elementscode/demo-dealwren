@@ -37,7 +37,7 @@ Dealwren needed owner and rep accounts, email invites, a pipeline board and deal
 
 ### What the agent got from the tooling
 
-The agent ran 43 builds in 25 minutes. By the build's own timer, the median build finished in 45 milliseconds, so it checked its work after each edit and kept going. The build caught one error, a LiveTable `select` that returned a query result where the table expects rows, with a message that spelled out the type it wanted. It read 41 manual pages as it reached each part, from `livetable/partitions` and `livetable/handlers` to `jobs`, then wrote 43 tests. In a real browser it dragged deals across the board, watched the move and new notes arrive in a second tab, ran an invite from email to signed-in rep, and checked five pages at phone width.
+The agent ran 43 builds in 25 minutes. It checked its work after each edit and kept going. The build caught one error, a LiveTable `select` that returned a query result where the table expects rows, with a message that spelled out the type it wanted. It read 41 manual pages as it reached each part, from `livetable/partitions` and `livetable/handlers` to `jobs`, then wrote 43 tests. In a real browser it dragged deals across the board, watched the move and new notes arrive in a second tab, ran an invite from email to signed-in rep, and checked five pages at phone width.
 
 Start in `app/shared/services/deals.ts`.
 
