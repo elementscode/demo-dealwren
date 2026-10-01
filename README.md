@@ -41,7 +41,7 @@ The project server runs alongside the agent and answers as soon as a file is sav
 
 ### What shipped
 
-The app type-checks with zero errors and all 43 tests pass. Every page was checked on desktop and phone before publishing, along with board moves and new notes arriving in a second tab and an invite run from email to signed-in rep. The repo was installed fresh from GitHub and run before the demo went live.
+The app type-checks with zero errors and all 43 tests pass. Every page was checked on desktop and phone before publishing, along with board moves and new notes arriving in a second tab and an invite run from email to signed-in rep.
 
 Start in `app/shared/services/deals.ts`.
 
