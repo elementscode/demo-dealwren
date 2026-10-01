@@ -29,11 +29,11 @@ Dealwren needed owner and rep accounts, email invites, a pipeline board and deal
 
 ### What Elements gave the app
 
-- **Live records.** Deals, activities, contacts, companies and tasks are LiveTables in `app/shared/services/`. Dragging a card on the pipeline board goes through the `update` handler of `deals` in `deals.ts`, which logs the stage change on the deal's timeline in the same transaction. A trigger in the third migration notifies the pinned `activities` channel, so the move appears on every open board, timeline and dashboard.
-- **Background work on a schedule.** One line in `index.ts`, `app.cron("every day at 8am", ...)`, schedules `QueueTaskDigestsJob`, which queues a `SendTaskDigestJob` per rep with an idempotency key. Each rep gets one `task-digest` email listing the follow-ups due that day.
-- **Invites by email.** The `invite` rpc in `app/pages/team/template.ehtml` creates a token and sends the `invite` email template. The `/invite/:token` page signs the new rep in.
-- **Roles in one guard.** `requireOwner` in `app/shared/services/auth.ts` guards every table's `delete` handler and the invite rpc, and `exportCsv`, served at `/contacts.csv`, gives the owner a spreadsheet of contacts.
-- **Data from SQL files.** Three migrations define the schema, seed an owner, two reps, five companies, ten contacts and fifteen deals with timelines and tasks, and add the activities trigger. The project server applied each one as soon as it was saved.
+- **Live records.** Deals, timeline entries, contacts, companies and tasks are LiveTables. Dragging a deal to a new stage saves it and logs the stage change on the deal's timeline in one transaction, and a database trigger broadcasts each timeline entry, so the move shows on every open board, timeline and dashboard.
+- **Morning task emails.** A one-line cron schedule runs a job at 8am that queues one email per rep listing the follow-ups due that day, with a key so a retry never sends twice.
+- **Invites by email.** The owner invites a rep by email from an `@rpc` function, and the invite link signs the new rep in.
+- **Owner-only actions.** One guard on the signed-in user's role lets only the owner delete records or invite, and the owner downloads contacts as CSV.
+- **Data from SQL files.** Migrations define the schema, seed an owner, two reps, five companies, ten contacts and fifteen deals with timelines and tasks, and add the timeline trigger. The project server applied each one as soon as it was saved.
 
 ### What the project server gave the agent
 
@@ -42,8 +42,6 @@ The project server runs alongside the agent and answers as soon as a file is sav
 ### What shipped
 
 The app type-checks with zero errors and all 43 tests pass. Every page works on desktop and phone, and live updates arrive across tabs, such as a board move or a new note appearing on another open board and timeline.
-
-Start in `app/shared/services/deals.ts`.
 
 ## Demo accounts
 
